@@ -45,19 +45,20 @@ namespace Telepathy
             size = 0;
 
             // buffer needs to be of Header + MaxMessageSize
-            if (payloadBuffer.Length != 4 + MaxMessageSize)
+            if (payloadBuffer.Length != Common.PackageHeaderSize + MaxMessageSize)
             {
-                Log.Error($"ReadMessageBlocking: payloadBuffer needs to be of size 4 + MaxMessageSize = {4 + MaxMessageSize} instead of {payloadBuffer.Length}");
+                Log.Error($"ReadMessageBlocking: payloadBuffer needs to be of size {Common.PackageHeaderSize} + MaxMessageSize = {Common.PackageHeaderSize + MaxMessageSize} instead of {payloadBuffer.Length}");
                 return false;
             }
 
-            // read exactly 4 bytes for header (blocking)
-            if (!stream.ReadExactly(headerBuffer, 4))
+            // read exactly the bytes for header (blocking)
+            if (!stream.ReadExactly(headerBuffer, Common.PackageHeaderSize))
                 return false;
 
             // convert to int
             size = Utils.BytesToIntBigEndian(headerBuffer);
 
+            Log.Warning($"Receive new package with expected size ({size}) and byte size ({payloadBuffer.Length})");
             // protect against allocation attacks. an attacker might send
             // multiple fake '2GB header' packets in a row, causing the server
             // to allocate multiple 2GB byte arrays and run out of memory.
@@ -84,13 +85,13 @@ namespace Telepathy
             //
             // IMPORTANT: DO NOT make this a member, otherwise every connection
             //            on the server would use the same buffer simulatenously
-            byte[] receiveBuffer = new byte[4 + MaxMessageSize];
+            byte[] receiveBuffer = new byte[Common.PackageHeaderSize + MaxMessageSize];
 
             // avoid header[4] allocations
             //
             // IMPORTANT: DO NOT make this a member, otherwise every connection
             //            on the server would use the same buffer simulatenously
-            byte[] headerBuffer = new byte[4];
+            byte[] headerBuffer = new byte[Common.PackageHeaderSize];
 
             // absolutely must wrap with try/catch, otherwise thread exceptions
             // are silent
@@ -124,7 +125,7 @@ namespace Telepathy
 
                     // create arraysegment for the read message
                     ArraySegment<byte> message = new ArraySegment<byte>(receiveBuffer, 0, size);
-
+                   
                     // send to main thread via pipe
                     // -> it'll copy the message internally so we can reuse the
                     //    receive buffer for next read!

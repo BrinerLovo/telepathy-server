@@ -14,6 +14,7 @@ namespace Telepathy
     public class ConnectionState
     {
         public TcpClient client;
+        public string NickName;
 
         // thread safe pipe to send messages from main thread to send thread
         public readonly MagnificentSendPipe sendPipe;

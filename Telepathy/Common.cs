@@ -29,6 +29,11 @@
         //    without Mirror and without sending pings, so timeouts are likely
         public int ReceiveTimeout = 0;
 
+        /// <summary>
+        /// Package Size byte size = 4
+        /// </summary>
+        public const int PackageHeaderSize = 4;
+
         // constructor
         protected Common(int MaxMessageSize)
         {

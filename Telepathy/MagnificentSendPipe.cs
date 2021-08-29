@@ -117,7 +117,7 @@ namespace Telepathy
                 //            ONCE. This is HUGE for performance so we keep it!
                 packetSize = 0;
                 foreach (ArraySegment<byte> message in queue)
-                    packetSize += 4 + message.Count; // header + content
+                    packetSize += Common.PackageHeaderSize + message.Count; // header + content
 
                 // create payload buffer if not created yet or previous one is
                 // too small
@@ -134,7 +134,7 @@ namespace Telepathy
 
                     // write header (size) into buffer at position
                     Utils.IntToBytesBigEndianNonAlloc(message.Count, payload, position);
-                    position += 4;
+                    position += Common.PackageHeaderSize;
 
                     // copy message into payload at position
                     Buffer.BlockCopy(message.Array, message.Offset, payload, position, message.Count);

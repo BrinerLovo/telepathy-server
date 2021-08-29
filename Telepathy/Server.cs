@@ -42,7 +42,7 @@ namespace Telepathy
         public int ReceivePipeTotalCount => receivePipe.TotalCount;
 
         // clients with <connectionId, ConnectionState>
-        readonly ConcurrentDictionary<int, ConnectionState> clients = new ConcurrentDictionary<int, ConnectionState>();
+        public readonly ConcurrentDictionary<int, ConnectionState> clients = new ConcurrentDictionary<int, ConnectionState>();
 
         // connectionId counter
         int counter;
@@ -280,7 +280,6 @@ namespace Telepathy
                         // times if other side lags or wire was disconnected)
                         connection.sendPipe.Enqueue(message);
                         connection.sendPending.Set(); // interrupt SendThread WaitOne()
-                        Log.Info($"Send data {message.Count} to connection {connectionId}");
                         return true;
                     }
                     // disconnect if send queue gets too big.
@@ -409,5 +408,11 @@ namespace Telepathy
             // return what's left to process for next time
             return receivePipe.TotalCount;
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public int ConnectionsCount() => clients.Count;
     }
 }

@@ -3,13 +3,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Threading;
+using Lovatto.Chicas.Internal;
+using Lovatto.Chicas;
 
 namespace Telepathy
 {
     class Program
     {
-        static Server server;
-        public const int MaxMessageSize = 16 * 1024;
+        static GameServer server;
+        public const int MaxMessageSize = 16 * 1024; //16kb limit per package
         const ushort serverTick = 1000; // (100k limit to avoid deadlocks)
         const short serverFrequency = 60;
 
@@ -26,11 +28,11 @@ namespace Telepathy
             Console.WriteLine($"Local IP: {GetLocalIPAddress()}");
             Console.WriteLine($"Public IP: {GetPublicIP()}");
 
-            server = new Server(MaxMessageSize);
+            server = new GameServer(MaxMessageSize);
             server.Start(1337);
             server.OnConnected += OnServerConnected;
             server.OnDisconnected += OnServerDisconnected;
-            server.OnData += ServerSend;
+            server.OnData += OnData;
 
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnAppExit);
 
@@ -41,25 +43,33 @@ namespace Telepathy
             }
         }
 
-        public static void ServerSend(int connectionId, ArraySegment<byte> segment)
+        public static void OnData(int connectionId, ArraySegment<byte> segment)
         {
-            var all = server.GetAllConnectionsIds();
-            ServerSend(all, segment);
+            var eventType = (ChicasInternalEventType)segment.Array[0];
+
+            Log.Info($"Received data ({segment.Count}) result, event type: {eventType.ToString()}");
+            switch (eventType)
+            {
+                case ChicasInternalEventType.Data:
+                    var all = server.GetAllConnectionsIds();
+                    ServerSend(all, segment);
+                    break;
+                case ChicasInternalEventType.CreatePlayer:
+                    InternalServerEventHandler.CreatePlayer(connectionId, segment);
+                    break;
+                default:
+                    Log.Warning("Not defined event type: " + eventType.ToString());
+                    break;
+            }
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="connectionIds"></param>
-        /// <param name="channelId"></param>
-        /// <param name="segment"></param>
         /// <returns></returns>
         public static bool ServerSend(List<int> connectionIds, ArraySegment<byte> segment)
         {
-            byte[] data = new byte[segment.Count];
-            Array.Copy(segment.Array, segment.Offset, data, 0, segment.Count);
-
-            Log.Info("Data length: " + data.Length);
+            Log.Info($"Send data length: {segment.Array.Length}");
             // send to all
             bool result = true;
             foreach (int connectionId in connectionIds)
@@ -70,10 +80,21 @@ namespace Telepathy
         /// <summary>
         /// 
         /// </summary>
+        /// <returns></returns>
+        public static bool ServerSendToSingle(int connectionId, ArraySegment<byte> segment)
+        {
+            Log.Info($"Send data length: {segment.Array.Length} to client {connectionId}");
+            // send to all
+             return server.Send(connectionId, segment);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="connectionID"></param>
         static void OnServerConnected(int connectionID)
         {
-            Log.Info(connectionID + " Connected");
+            Log.Info($"Client {connectionID} Connected, total connections: {server.ConnectionsCount()}");
         }
 
         /// <summary>
@@ -109,6 +130,12 @@ namespace Telepathy
             }
             throw new Exception("No network adapters with an IPv4 address in the system!");
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public static GameServer GetServer() => server;
 
         /// <summary>
         /// 
