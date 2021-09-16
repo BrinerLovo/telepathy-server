@@ -20,7 +20,7 @@ namespace Telepathy
         // -> ArraySegment indicates the actual message content
         //
         // IMPORTANT: lock{} all usages!
-        readonly Queue<ArraySegment<byte>> queue = new Queue<ArraySegment<byte>>();
+        readonly Queue<ArraySegmentX<byte>> queue = new Queue<ArraySegmentX<byte>>();
 
         // byte[] pool to avoid allocations
         // Take & Return is beautifully encapsulated in the pipe.
@@ -53,7 +53,7 @@ namespace Telepathy
         // enqueue a message
         // arraysegment for allocation free sends later.
         // -> the segment's array is only used until Enqueue() returns!
-        public void Enqueue(ArraySegment<byte> message)
+        public void Enqueue(ArraySegmentX<byte> message)
         {
             // pool & queue usage always needs to be locked
             lock (this)
@@ -68,7 +68,7 @@ namespace Telepathy
                 Buffer.BlockCopy(message.Array, message.Offset, bytes, 0, message.Count);
 
                 // indicate which part is the message
-                ArraySegment<byte> segment = new ArraySegment<byte>(bytes, 0, message.Count);
+                ArraySegmentX<byte> segment = new ArraySegmentX<byte>(bytes, 0, message.Count);
 
                 // now enqueue it
                 queue.Enqueue(segment);
@@ -116,7 +116,7 @@ namespace Telepathy
                 //            into one large payload so we only give it to TCP
                 //            ONCE. This is HUGE for performance so we keep it!
                 packetSize = 0;
-                foreach (ArraySegment<byte> message in queue)
+                foreach (ArraySegmentX<byte> message in queue)
                     packetSize += Common.PackageHeaderSize + message.Count; // header + content
 
                 // create payload buffer if not created yet or previous one is
@@ -130,7 +130,7 @@ namespace Telepathy
                 while (queue.Count > 0)
                 {
                     // dequeue
-                    ArraySegment<byte> message = queue.Dequeue();
+                    ArraySegmentX<byte> message = queue.Dequeue();
 
                     // write header (size) into buffer at position
                     Utils.IntToBytesBigEndianNonAlloc(message.Count, payload, position);

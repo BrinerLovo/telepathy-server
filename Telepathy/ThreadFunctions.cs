@@ -58,7 +58,6 @@ namespace Telepathy
             // convert to int
             size = Utils.BytesToIntBigEndian(headerBuffer);
 
-            Log.Warning($"Receive new package with expected size ({size}) and byte size ({payloadBuffer.Length})");
             // protect against allocation attacks. an attacker might send
             // multiple fake '2GB header' packets in a row, causing the server
             // to allocate multiple 2GB byte arrays and run out of memory.
@@ -124,7 +123,7 @@ namespace Telepathy
                         break;
 
                     // create arraysegment for the read message
-                    ArraySegment<byte> message = new ArraySegment<byte>(receiveBuffer, 0, size);
+                    ArraySegmentX<byte> message = new ArraySegmentX<byte>(receiveBuffer, 0, size);
                    
                     // send to main thread via pipe
                     // -> it'll copy the message internally so we can reuse the

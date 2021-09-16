@@ -20,8 +20,8 @@ namespace Telepathy
         {
             public int connectionId;
             public EventType eventType;
-            public ArraySegment<byte> data;
-            public Entry(int connectionId, EventType eventType, ArraySegment<byte> data)
+            public ArraySegmentX<byte> data;
+            public Entry(int connectionId, EventType eventType, ArraySegmentX<byte> data)
             {
                 this.connectionId = connectionId;
                 this.eventType = eventType;
@@ -88,13 +88,13 @@ namespace Telepathy
         // -> parameters passed directly so it's more obvious that we don't just
         //    queue a passed 'Message', instead we copy the ArraySegment into
         //    a byte[] and store it internally, etc.)
-        public void Enqueue(int connectionId, EventType eventType, ArraySegment<byte> message)
+        public void Enqueue(int connectionId, EventType eventType, ArraySegmentX<byte> message)
         {
             // pool & queue usage always needs to be locked
             lock (this)
             {
                 // does this message have a data array content?
-                ArraySegment<byte> segment = default;
+                ArraySegmentX<byte> segment = default;
                 if (message != default)
                 {
                     // ArraySegment is only valid until returning.
@@ -109,7 +109,7 @@ namespace Telepathy
                     Buffer.BlockCopy(message.Array, message.Offset, bytes, 0, message.Count);
 
                     // indicate which part is the message
-                    segment = new ArraySegment<byte>(bytes, 0, message.Count);
+                    segment = new ArraySegmentX<byte>(bytes, 0, message.Count);
                 }
 
                 // enqueue it
@@ -132,7 +132,7 @@ namespace Telepathy
         // => see TryDequeue comments!
         //
         // IMPORTANT: TryPeek & Dequeue need to be called from the SAME THREAD!
-        public bool TryPeek(out int connectionId, out EventType eventType, out ArraySegment<byte> data)
+        public bool TryPeek(out int connectionId, out EventType eventType, out ArraySegmentX<byte> data)
         {
             connectionId = 0;
             eventType = EventType.Disconnected;

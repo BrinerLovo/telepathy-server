@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Linq;
+using Lovatto.Chicas;
 
 namespace Telepathy
 {
@@ -13,7 +14,7 @@ namespace Telepathy
         // events to hook into
         // => OnData uses ArraySegment for allocation free receives later
         public Action<int> OnConnected;
-        public Action<int, ArraySegment<byte>> OnData;
+        public Action<int, ArraySegmentX<byte>> OnData;
         public Action<int> OnDisconnected;
 
         // listener
@@ -42,7 +43,7 @@ namespace Telepathy
         public int ReceivePipeTotalCount => receivePipe.TotalCount;
 
         // clients with <connectionId, ConnectionState>
-        public readonly ConcurrentDictionary<int, ConnectionState> clients = new ConcurrentDictionary<int, ConnectionState>();
+        public readonly ConcurrentDictionary<int, ChicasPlayer> clients = new ConcurrentDictionary<int, ChicasPlayer>();
 
         // connectionId counter
         int counter;
@@ -93,8 +94,8 @@ namespace Telepathy
                 // https://stackoverflow.com/questions/1917814/eagain-error-for-accept-on-blocking-socket/1918118#1918118
                 // => fixes https://github.com/vis2k/Mirror/issues/2695
                 //
-                //listener.Server.SendTimeout = SendTimeout;
-                //listener.Server.ReceiveTimeout = ReceiveTimeout;
+               // listener.Server.SendTimeout = SendTimeout;
+               // listener.Server.ReceiveTimeout = ReceiveTimeout;
                 listener.Start();
                 Log.Info("Server: listening port=" + port);
 
@@ -109,14 +110,15 @@ namespace Telepathy
 
                     // set socket options
                     client.NoDelay = NoDelay;
-                    client.SendTimeout = SendTimeout;
-                    client.ReceiveTimeout = ReceiveTimeout;
+                    //client.SendTimeout = SendTimeout;
+                    //client.ReceiveTimeout = ReceiveTimeout;
 
                     // generate the next connection id (thread safely)
                     int connectionId = NextConnectionId();
 
                     // add to dict immediately
-                    ConnectionState connection = new ConnectionState(client, MaxMessageSize);
+                    var connection = new ChicasPlayer(client, MaxMessageSize);
+                    connection.OwnerID = connectionId;
                     clients[connectionId] = connection;
 
                     // spawn a send thread for each client
@@ -244,7 +246,7 @@ namespace Telepathy
             listenerThread = null;
 
             // close all client connections
-            foreach (KeyValuePair<int, ConnectionState> kvp in clients)
+            foreach (KeyValuePair<int, ChicasPlayer> kvp in clients)
             {
                 TcpClient client = kvp.Value.client;
                 // close the stream if not closed yet. it may have been closed
@@ -264,13 +266,13 @@ namespace Telepathy
         // send message to client using socket connection.
         // arraysegment for allocation free sends later.
         // -> the segment's array is only used until Send() returns!
-        public bool Send(int connectionId, ArraySegment<byte> message)
+        public bool Send(int connectionId, ArraySegmentX<byte> message)
         {
             // respect max message size to avoid allocation attacks.
             if (message.Count <= MaxMessageSize)
             {
                 // find the connection
-                if (clients.TryGetValue(connectionId, out ConnectionState connection))
+                if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
                 {
                     // check send pipe limit
                     if (connection.sendPipe.Count < SendQueueLimit)
@@ -324,7 +326,7 @@ namespace Telepathy
         public string GetClientAddress(int connectionId)
         {
             // find the connection
-            if (clients.TryGetValue(connectionId, out ConnectionState connection))
+            if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
             {
                 return ((IPEndPoint)connection.client.Client.RemoteEndPoint).Address.ToString();
             }
@@ -335,7 +337,7 @@ namespace Telepathy
         public bool Disconnect(int connectionId)
         {
             // find the connection
-            if (clients.TryGetValue(connectionId, out ConnectionState connection))
+            if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
             {
                 // just close it. send thread will take care of the rest.
                 connection.client.Close();
@@ -379,7 +381,7 @@ namespace Telepathy
 
                 // peek first. allows us to process the first queued entry while
                 // still keeping the pooled byte[] alive by not removing anything.
-                if (receivePipe.TryPeek(out int connectionId, out EventType eventType, out ArraySegment<byte> message))
+                if (receivePipe.TryPeek(out int connectionId, out EventType eventType, out ArraySegmentX<byte> message))
                 {
                     switch (eventType)
                     {
@@ -393,7 +395,7 @@ namespace Telepathy
                             OnDisconnected?.Invoke(connectionId);
                             // remove disconnected connection now that the final
                             // disconnected message was processed.
-                            clients.TryRemove(connectionId, out ConnectionState _);
+                            clients.TryRemove(connectionId, out ChicasPlayer _);
                             break;
                     }
 

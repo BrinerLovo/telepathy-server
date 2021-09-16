@@ -11,6 +11,7 @@ namespace Telepathy
     class Program
     {
         static GameServer server;
+        public const int port = 1337;
         public const int MaxMessageSize = 16 * 1024; //16kb limit per package
         const ushort serverTick = 1000; // (100k limit to avoid deadlocks)
         const short serverFrequency = 60;
@@ -29,7 +30,7 @@ namespace Telepathy
             Console.WriteLine($"Public IP: {GetPublicIP()}");
 
             server = new GameServer(MaxMessageSize);
-            server.Start(1337);
+            server.Start(port);
             server.OnConnected += OnServerConnected;
             server.OnDisconnected += OnServerDisconnected;
             server.OnData += OnData;
@@ -43,7 +44,10 @@ namespace Telepathy
             }
         }
 
-        public static void OnData(int connectionId, ArraySegment<byte> segment)
+        /// <summary>
+        /// Called when the server receive data from a client
+        /// </summary>
+        public static void OnData(int connectionId, ArraySegmentX<byte> segment)
         {
             var eventType = (ChicasInternalEventType)segment.Array[0];
 
@@ -56,6 +60,12 @@ namespace Telepathy
                     break;
                 case ChicasInternalEventType.CreatePlayer:
                     InternalServerEventHandler.CreatePlayer(connectionId, segment);
+                    break;
+                case ChicasInternalEventType.FetchFriends:
+                    InternalServerEventHandler.FetchFriends(connectionId, segment);
+                    break;
+                case ChicasInternalEventType.SendInvitation:
+                    InternalServerEventHandler.SendInvitation(connectionId, segment);
                     break;
                 default:
                     Log.Warning("Not defined event type: " + eventType.ToString());
@@ -103,7 +113,7 @@ namespace Telepathy
         /// <param name="connectionID"></param>
         static void OnServerDisconnected(int connectionID)
         {
-            Log.Info(connectionID + " Disconnected");
+            Log.Info($"{connectionID} Disconnected, remain: {server.ConnectionsCount()}");
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Threading;
+using Lovatto.Chicas;
 
 namespace Telepathy
 {
@@ -12,7 +13,7 @@ namespace Telepathy
     //    while attempting to use it for a new connection attempt etc.
     // => creating a fresh client state each time is the best solution against
     //    data races here!
-    class ClientConnectionState : ConnectionState
+    class ClientConnectionState : ChicasPlayer
     {
         public Thread receiveThread;
 
@@ -85,7 +86,7 @@ namespace Telepathy
         // events to hook into
         // => OnData uses ArraySegment for allocation free receives later
         public Action OnConnected;
-        public Action<ArraySegment<byte>> OnData;
+        public Action<ArraySegmentX<byte>> OnData;
         public Action OnDisconnected;
 
         // disconnect if send queue gets too big.
@@ -259,7 +260,7 @@ namespace Telepathy
         // send message to server using socket connection.
         // arraysegment for allocation free sends later.
         // -> the segment's array is only used until Send() returns!
-        public bool Send(ArraySegment<byte> message)
+        public bool Send(ArraySegmentX<byte> message)
         {
             if (Connected)
             {
@@ -332,7 +333,7 @@ namespace Telepathy
 
                 // peek first. allows us to process the first queued entry while
                 // still keeping the pooled byte[] alive by not removing anything.
-                if (state.receivePipe.TryPeek(out int _, out EventType eventType, out ArraySegment<byte> message))
+                if (state.receivePipe.TryPeek(out int _, out EventType eventType, out ArraySegmentX<byte> message))
                 {
                     switch (eventType)
                     {

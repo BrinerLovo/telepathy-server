@@ -17,5 +17,8 @@
         Data = 0,
         CreatePlayer = 1,
         PlayerConnected = 2,
+        FetchFriends = 3,
+        SendInvitation = 4,
+        ReceiveInvitation = 5,
     }
 }
