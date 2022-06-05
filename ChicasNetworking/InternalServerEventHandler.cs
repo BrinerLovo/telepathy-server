@@ -16,7 +16,7 @@ namespace Lovatto.Chicas
             Buffer.BlockCopy(message.Array, message.Offset, bytesArr, 0, message.Count);
 
             var text = NetworkSerializer.DeserializeText(bytesArr);
-            var client = Program.GetServer().GetClient(connectionID);
+            var client = ServerConsole.GetServer().GetClient(connectionID);
 
             // Example text Username|10 
             string[] split = text.Split('|');
@@ -37,7 +37,10 @@ namespace Lovatto.Chicas
                 echo = "-1";
             }
 
-            Program.ServerSendToSingle(connectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(echo, ChicasInternalEventType.CreatePlayer)));
+            ServerConsole.ServerSendToSingle(connectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(echo, ChicasInternalEventType.CreatePlayer)));
+
+            // after create the player, sent the current room list so he have a copy of it locally.
+            ServerConsole.GetServer().lobby.SendRoomTo(connectionID);
         }
 
         public struct FriendData
@@ -85,7 +88,7 @@ namespace Lovatto.Chicas
                 ids[i] = int.Parse(split[i]);
             }
 
-            var cliens = Program.GetServer().GetAllClients();
+            var cliens = ServerConsole.GetServer().GetAllClients();
             var friends = new FriendData[ids.Length];
 
             // check if the friends are connected to the server
@@ -116,7 +119,7 @@ namespace Lovatto.Chicas
 
             //Log.Info($"Fetched friends: {echo}");
 
-            Program.ServerSendToSingle(connectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(echo, ChicasInternalEventType.FetchFriends)));
+            ServerConsole.ServerSendToSingle(connectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(echo, ChicasInternalEventType.FetchFriends)));
         }
 
         /// <summary>
@@ -128,7 +131,7 @@ namespace Lovatto.Chicas
 
             string[] split = text.Split('|');
             int friendConnectionID = int.Parse(split[0]);
-            var friend = Program.GetServer().GetClient(friendConnectionID);
+            var friend = ServerConsole.GetServer().GetClient(friendConnectionID);
 
             if(friend == null)
             {
@@ -136,7 +139,7 @@ namespace Lovatto.Chicas
                 return;
             }
 
-            var sender = Program.GetServer().GetClient(connectionID);
+            var sender = ServerConsole.GetServer().GetClient(connectionID);
             if (sender == null)
             {
                 Log.Warning($"Couldn't found client sender with conID {connectionID}");
@@ -145,7 +148,7 @@ namespace Lovatto.Chicas
             sender.ProvidedAddress = split[1];
 
             string data = $"{sender.NickName}|{connectionID}|{sender.AuthID}|{sender.ProvidedAddress}|{split[2]}";
-            Program.ServerSendToSingle(friendConnectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(data, ChicasInternalEventType.ReceiveInvitation)));
+            ServerConsole.ServerSendToSingle(friendConnectionID, new ArraySegmentX<byte>(NetworkSerializer.SerializeText(data, ChicasInternalEventType.ReceiveInvitation)));
             Log.Info($"Invitation send to {friend.NickName} from {sender.NickName} to join in {sender.ProvidedAddress}");
         }
 

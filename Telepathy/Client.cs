@@ -13,7 +13,7 @@ namespace Telepathy
     //    while attempting to use it for a new connection attempt etc.
     // => creating a fresh client state each time is the best solution against
     //    data races here!
-    class ClientConnectionState : ChicasPlayer
+    class ClientConnectionState : ChicasClient
     {
         public Thread receiveThread;
 

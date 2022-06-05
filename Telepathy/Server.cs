@@ -43,7 +43,7 @@ namespace Telepathy
         public int ReceivePipeTotalCount => receivePipe.TotalCount;
 
         // clients with <connectionId, ConnectionState>
-        public readonly ConcurrentDictionary<int, ChicasPlayer> clients = new ConcurrentDictionary<int, ChicasPlayer>();
+        public readonly ConcurrentDictionary<int, ChicasClient> clients = new ConcurrentDictionary<int, ChicasClient>();
 
         // connectionId counter
         int counter;
@@ -117,7 +117,7 @@ namespace Telepathy
                     int connectionId = NextConnectionId();
 
                     // add to dict immediately
-                    var connection = new ChicasPlayer(client, MaxMessageSize);
+                    var connection = new ChicasClient(client, MaxMessageSize);
                     connection.OwnerID = connectionId;
                     clients[connectionId] = connection;
 
@@ -246,7 +246,7 @@ namespace Telepathy
             listenerThread = null;
 
             // close all client connections
-            foreach (KeyValuePair<int, ChicasPlayer> kvp in clients)
+            foreach (KeyValuePair<int, ChicasClient> kvp in clients)
             {
                 TcpClient client = kvp.Value.client;
                 // close the stream if not closed yet. it may have been closed
@@ -272,7 +272,7 @@ namespace Telepathy
             if (message.Count <= MaxMessageSize)
             {
                 // find the connection
-                if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
+                if (clients.TryGetValue(connectionId, out ChicasClient connection))
                 {
                     // check send pipe limit
                     if (connection.sendPipe.Count < SendQueueLimit)
@@ -326,7 +326,7 @@ namespace Telepathy
         public string GetClientAddress(int connectionId)
         {
             // find the connection
-            if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
+            if (clients.TryGetValue(connectionId, out ChicasClient connection))
             {
                 return ((IPEndPoint)connection.client.Client.RemoteEndPoint).Address.ToString();
             }
@@ -337,7 +337,7 @@ namespace Telepathy
         public bool Disconnect(int connectionId)
         {
             // find the connection
-            if (clients.TryGetValue(connectionId, out ChicasPlayer connection))
+            if (clients.TryGetValue(connectionId, out ChicasClient connection))
             {
                 // just close it. send thread will take care of the rest.
                 connection.client.Close();
@@ -351,7 +351,7 @@ namespace Telepathy
         /// 
         /// </summary>
         /// <returns></returns>
-        public List<int> GetAllConnectionsIds() => clients.Keys.ToList();
+        public int[] GetAllConnectionsIds() => clients.Keys.ToArray();
 
         // tick: processes up to 'limit' messages for each connection
         // => limit parameter to avoid deadlocks / too long freezes if server or
@@ -395,7 +395,7 @@ namespace Telepathy
                             OnDisconnected?.Invoke(connectionId);
                             // remove disconnected connection now that the final
                             // disconnected message was processed.
-                            clients.TryRemove(connectionId, out ChicasPlayer _);
+                            clients.TryRemove(connectionId, out ChicasClient _);
                             break;
                     }
 

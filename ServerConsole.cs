@@ -3,12 +3,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Threading;
-using Lovatto.Chicas.Internal;
 using Lovatto.Chicas;
+using Lovatto.Chicas.Internal;
 
 namespace Telepathy
 {
-    class Program
+    class ServerConsole
     {
         static GameServer server;
         public const int port = 1337;
@@ -18,7 +18,7 @@ namespace Telepathy
 
         static void Main(string[] args)
         {
-            RunServerThread();
+             RunServerThread();
         }
 
         /// <summary>
@@ -49,6 +49,7 @@ namespace Telepathy
         /// </summary>
         public static void OnData(int connectionId, ArraySegmentX<byte> segment)
         {
+            // the first byte of each package is the message type
             var eventType = (ChicasInternalEventType)segment.Array[0];
 
             Log.Info($"Received data ({segment.Count}) result, event type: {eventType.ToString()}");
@@ -67,6 +68,12 @@ namespace Telepathy
                 case ChicasInternalEventType.SendInvitation:
                     InternalServerEventHandler.SendInvitation(connectionId, segment);
                     break;
+                case ChicasInternalEventType.CreateRoom:
+                    server.lobby.TryCreateRoom(connectionId, segment);
+                    break;
+                case ChicasInternalEventType.JoinRoom:
+                    server.lobby.JoinClientToRoom(connectionId, segment);
+                    break;
                 default:
                     Log.Warning("Not defined event type: " + eventType.ToString());
                     break;
@@ -77,13 +84,31 @@ namespace Telepathy
         /// 
         /// </summary>
         /// <returns></returns>
-        public static bool ServerSend(List<int> connectionIds, ArraySegment<byte> segment)
+        public static bool ServerSend(int[] connectionIds, ArraySegment<byte> segment)
         {
             Log.Info($"Send data length: {segment.Array.Length}");
             // send to all
             bool result = true;
             foreach (int connectionId in connectionIds)
                 result &= server.Send(connectionId, segment);
+            return result;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public static bool ServerSendToAll(ArraySegment<byte> segment)
+        {
+            Log.Info($"Send data length: {segment.Array.Length}");
+            var connectionIds = server.GetAllConnectionsIds();
+            // send to all
+            bool result = true;
+            foreach (int connectionId in connectionIds)
+            {
+                result &= server.Send(connectionId, segment);
+            }
+
             return result;
         }
 
@@ -113,7 +138,21 @@ namespace Telepathy
         /// <param name="connectionID"></param>
         static void OnServerDisconnected(int connectionID)
         {
-            Log.Info($"{connectionID} Disconnected, remain: {server.ConnectionsCount()}");
+            var client = (ClientRef)connectionID;
+            if(client != null)
+            {
+                // if the disconnected client was in a room
+                if(client.Player.Status == ChicasNetworkStatus.InRoom)
+                {
+                    GameRoom room;
+                    if(GetServer().lobby.TryGetRoom(client.Player.Room, out room))
+                    {
+                        room.DisconnectClient(client);
+                    }
+                }
+            }
+
+            Log.Info($"{connectionID} Disconnected, remaining: {server.ConnectionsCount() - 1}");
         }
 
         /// <summary>
@@ -153,16 +192,12 @@ namespace Telepathy
         /// <returns></returns>
         public static string GetPublicIP()
         {
-            string url = "http://checkip.dyndns.org";
+            string url = "http://api.ipify.org/";
             WebRequest req = WebRequest.Create(url);
             WebResponse resp = req.GetResponse();
             System.IO.StreamReader sr = new System.IO.StreamReader(resp.GetResponseStream());
             string response = sr.ReadToEnd().Trim();
-            string[] a = response.Split(':');
-            string a2 = a[1].Substring(1);
-            string[] a3 = a2.Split('<');
-            string a4 = a3[0];
-            return a4;
+            return response;
         }
     }
 }

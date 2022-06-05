@@ -20,5 +20,10 @@
         FetchFriends = 3,
         SendInvitation = 4,
         ReceiveInvitation = 5,
+        RoomList = 6,
+        CreateRoom,
+        JoinRoom,
+        RoomUpdate,
+        PlayerLeftRoom,
     }
 }

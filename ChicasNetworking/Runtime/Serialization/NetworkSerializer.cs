@@ -9,11 +9,57 @@ namespace Lovatto.Chicas.Internal
 {
     public static class NetworkSerializer
     {
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public static byte[] SerializeMessage(SerializedMessage networkMessage, ChicasInternalEventType eventType = ChicasInternalEventType.Data)
+        public static byte[] Serialize<T>(T package, ChicasInternalEventType eventType = ChicasInternalEventType.Data)
+        {
+            if (package == null)
+                return null;
+
+            byte[] data;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                bf.Binder = new NetworkBinder();
+
+                bf.Serialize(ms, package);
+                data = ms.ToArray();
+            }
+
+            return ChicasNetworkingUtility.InsertInitialByteInArray((byte)eventType, data);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public static T Deserialize<T>(byte[] arrBytes)
+        {
+            using (MemoryStream memStream = new MemoryStream())
+            {
+                BinaryFormatter binForm = new BinaryFormatter();
+                binForm.Binder = new NetworkBinder();
+
+                memStream.Write(arrBytes, 0, arrBytes.Length);
+
+                //byte 0 = EventType, so start seeking from byte index 1
+                memStream.Seek(1, SeekOrigin.Begin);
+                try
+                {
+                    return (T)binForm.Deserialize(memStream);
+                }
+                catch (SerializationException ex) { Log.Error("Serialization Error: " + ex.Message); return default(T); }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public static byte[] SerializeMessage(NetworkPackage networkMessage, ChicasInternalEventType eventType = ChicasInternalEventType.Data)
         {
             if (networkMessage == null)
                 return null;
@@ -22,6 +68,8 @@ namespace Lovatto.Chicas.Internal
             using (MemoryStream ms = new MemoryStream())
             {
                 BinaryFormatter bf = new BinaryFormatter();
+                bf.Binder = new NetworkBinder();
+
                 bf.Serialize(ms, networkMessage);
                 data = ms.ToArray();
             }
@@ -33,18 +81,19 @@ namespace Lovatto.Chicas.Internal
         /// 
         /// </summary>
         /// <returns></returns>
-        public static SerializedMessage DeserializeMessage(byte[] arrBytes)
+        public static NetworkPackage DeserializeMessage(byte[] arrBytes)
         {
             using (MemoryStream memStream = new MemoryStream())
             {
                 BinaryFormatter binForm = new BinaryFormatter();
+                binForm.Binder = new NetworkBinder();
                 memStream.Write(arrBytes, 0, arrBytes.Length);
 
                 //byte 0 = EventType, so start seeking from byte index 1
                 memStream.Seek(1, SeekOrigin.Begin);
                 try
                 {
-                    return (SerializedMessage)binForm.Deserialize(memStream);
+                    return (NetworkPackage)binForm.Deserialize(memStream);
                 }
                 catch (SerializationException ex) { Log.Error("Serialization Error: " + ex.Message); return null; }
             }
@@ -54,7 +103,7 @@ namespace Lovatto.Chicas.Internal
         /// 
         /// </summary>
         /// <returns></returns>
-        public static byte[] SerializeChicasData(NetworkMessage networkMessage)
+        public static byte[] SerializeChicasData(NetworkMessage networkMessage, ChicasInternalEventType eventType = ChicasInternalEventType.Data)
         {
             if (networkMessage == null)
                 return null;
@@ -62,17 +111,19 @@ namespace Lovatto.Chicas.Internal
             if (networkMessage.DataTable == null)
                 networkMessage.DataTable = new ChicasData();
 
-            networkMessage.DataTable.Add("msgt", networkMessage.NetworkMessageType);
+            networkMessage.DataTable.Add(ChicasNetworkingConstants.NETWORK_MESSAGE_TYPE_NAME, networkMessage.NetworkMessageType);
 
             byte[] data;
             using (MemoryStream ms = new MemoryStream())
             {
                 BinaryFormatter bf = new BinaryFormatter();
+                bf.Binder = new NetworkBinder();
+
                 bf.Serialize(ms, networkMessage.DataTable);
                 data = ms.ToArray();
             }
 
-            return data;
+            return ChicasNetworkingUtility.InsertInitialByteInArray((byte)eventType, data);
         }
 
         /// <summary>
@@ -85,8 +136,12 @@ namespace Lovatto.Chicas.Internal
             using (MemoryStream memStream = new MemoryStream())
             {
                 BinaryFormatter binForm = new BinaryFormatter();
+                binForm.Binder = new NetworkBinder();
+
                 memStream.Write(arrBytes, 0, arrBytes.Length);
-                memStream.Seek(0, SeekOrigin.Begin);
+
+                // byte 0 = EventType, so start seeking from byte index 1
+                memStream.Seek(1, SeekOrigin.Begin);
                 try
                 {
                     obj = (ChicasData)binForm.Deserialize(memStream);

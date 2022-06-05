@@ -2,20 +2,26 @@
 using System.Collections.Generic;
 using Telepathy;
 using System.Linq;
+using Telepathy.ChicasNetworking;
 
 namespace Lovatto.Chicas
 {
     public class GameServer : Server
     {
+        /// <summary>
+        /// Handle all the game room logic
+        /// </summary>
+        public Lobby lobby = new Lobby();
+
         public GameServer(int MaxMessageSize) : base(MaxMessageSize) { }
 
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public ChicasPlayer GetClient(int connectionID)
+        public ChicasClient GetClient(int connectionID)
         {
-            ChicasPlayer client;
+            ChicasClient client;
             clients.TryGetValue(connectionID, out client);
             return client;
         }
@@ -24,7 +30,7 @@ namespace Lovatto.Chicas
         /// 
         /// </summary>
         /// <returns></returns>
-        public ChicasPlayer GetClientByName(string clientName)
+        public ChicasClient GetClientByName(string clientName)
         {
             var allClients = clients.Values.ToArray();
 
@@ -40,6 +46,17 @@ namespace Lovatto.Chicas
         /// 
         /// </summary>
         /// <returns></returns>
-        public ChicasPlayer[] GetAllClients() => clients.Values.ToArray();
+        public ChicasClient[] GetAllClients() => clients.Values.ToArray();
+
+        /// <summary>
+        /// Current server instance
+        /// </summary>
+        public static GameServer I
+        {
+            get
+            {
+               return ServerConsole.GetServer();
+            }
+        }
     }
 }

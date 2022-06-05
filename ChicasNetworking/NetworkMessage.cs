@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-
-namespace Lovatto.Chicas
+﻿namespace Lovatto.Chicas
 {
     public class NetworkMessage
     {
@@ -14,10 +11,26 @@ namespace Lovatto.Chicas
             DataTable = new ChicasData();
         }
 
+        /// <summary>
+        /// Add data to the container.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        public void Add(string key, object value)
+        {
+            if (DataTable == null) DataTable = new ChicasData();
+
+            DataTable.Add(key, value);
+        }
+
+        /// <summary>
+        /// Parse a network data to local only data
+        /// </summary>
+        /// <param name="hashtable"></param>
         public void ParseData(ChicasData hashtable)
         {
-            NetworkMessageType = (NetworkMessageTarget)hashtable["msgt"];
-            DataTable.Remove("msgt");
+            NetworkMessageType = (NetworkMessageTarget)hashtable[ChicasNetworkingConstants.NETWORK_MESSAGE_TYPE_NAME];
+            DataTable.Remove(ChicasNetworkingConstants.NETWORK_MESSAGE_TYPE_NAME);
             DataTable = hashtable;
         }
     }
@@ -27,5 +40,6 @@ namespace Lovatto.Chicas
         All = 0,
         Others = 1,
         ServerOnly = 2,
+        ClientOnly = 3,
     }
 }
