@@ -8,7 +8,6 @@ namespace Lovatto.Chicas
     [Serializable]
     public struct PlayerRef
     {
-
         private int _index;
         private ChicasClient _player;
 
@@ -51,9 +50,13 @@ namespace Lovatto.Chicas
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <param name="eventType"></param>
-        public void SerializeAndWritte<T>(T data, ChicasInternalEventType eventType)
+        public void SerializeAndWritte(byte[] data, ChicasInternalEventType eventType)
         {
-            ServerConsole.ServerSendToSingle(this, new ArraySegment<byte>(NetworkSerializer.Serialize(data, eventType)));
+            var package = ChicasPacketPool.AcquirePacket();
+            package.SetCode(eventType)
+                .SetBinary(data);
+
+            ServerConsole.ServerSendToSingle(this, package.GetSerializedSegment());
         }
 
         public override bool Equals(object obj)

@@ -7,8 +7,17 @@ using Telepathy;
 namespace Lovatto.Chicas
 {
     [Serializable]
-    public class GameRoom
+    public class GameRoom : ICustomSerializable
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        public enum RoomFlags : byte
+        {
+            None,
+            Removed,
+        }
+
         /// <summary>
         /// Room name
         /// </summary>
@@ -28,6 +37,11 @@ namespace Lovatto.Chicas
         /// This room custom properties
         /// </summary>
         public ChicasData Properties;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public RoomFlags Flags;
 
         /// <summary>
         /// Players inside the room count.
@@ -78,7 +92,7 @@ namespace Lovatto.Chicas
 
                 var response = new OpResponse();
                 response.AddParam(client.ConnectionId);
-                SerializedAndWriteToAll(response, ChicasInternalEventType.PlayerLeftRoom);
+                WriteToAll(response.GetAsPacket(ChicasInternalEventType.PlayerLeftRoom).GetSerializedSegment());
             }
         }
 
@@ -88,9 +102,9 @@ namespace Lovatto.Chicas
         /// <typeparam name="T"></typeparam>
         /// <param name="data"></param>
         /// <param name="eventType"></param>
-        public void SerializedAndWriteToAll<T>(T data, ChicasInternalEventType eventType)
+        public void WriteToAll(ArraySegmentX<byte> data)
         {
-            ServerConsole.ServerSend(GetJoinedClients(), new ArraySegment<byte>(NetworkSerializer.Serialize(data, eventType)));
+            ServerConsole.ServerSend(GetJoinedClients(), data);
         }
 
         /// <summary>
@@ -110,6 +124,30 @@ namespace Lovatto.Chicas
                 ids.Append(PlayerList[i]);
             }
             return ids;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="writer"></param>
+        public void Write(EndianBinaryWriter writer)
+        {
+            writer.Write(Name);
+            writer.Write(MaxPlayers);
+            writer.Write(PlayerList);
+            writer.Write((byte)Flags);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="reader"></param>
+        public void Read(EndianBinaryReader reader)
+        {
+            Name = reader.ReadString();
+            MaxPlayers = reader.ReadByte();
+            PlayerList = reader.ReadInt32Array();
+            Flags = (RoomFlags)reader.ReadByte();
         }
 
         #region Defaults Override

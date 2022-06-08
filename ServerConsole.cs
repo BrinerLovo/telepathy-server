@@ -18,7 +18,9 @@ namespace Telepathy
 
         static void Main(string[] args)
         {
-             RunServerThread();
+            //Test.DoTest();
+
+            RunServerThread();
         }
 
         /// <summary>
@@ -50,34 +52,41 @@ namespace Telepathy
         public static void OnData(int connectionId, ArraySegmentX<byte> segment)
         {
             // the first byte of each package is the message type
-            var eventType = (ChicasInternalEventType)segment.Array[0];
+            // var eventType = (ChicasInternalEventType)segment.Array[0];
+
+            var packet = server.packetPool.Acquire(segment.Array, 0);
+            var eventType = (ChicasInternalEventType)packet.Code;
 
             Log.Info($"Received data ({segment.Count}) result, event type: {eventType.ToString()}");
             switch (eventType)
             {
                 case ChicasInternalEventType.Data:
+                    // just transmit the data to all other clients
                     var all = server.GetAllConnectionsIds();
                     ServerSend(all, segment);
                     break;
                 case ChicasInternalEventType.CreatePlayer:
-                    InternalServerEventHandler.CreatePlayer(connectionId, segment);
+                    AuthenticationHandler.CreatePlayer(connectionId, packet);
                     break;
                 case ChicasInternalEventType.FetchFriends:
-                    InternalServerEventHandler.FetchFriends(connectionId, segment);
+                    FriendsHandler.FetchFriends(connectionId, packet);
                     break;
                 case ChicasInternalEventType.SendInvitation:
-                    InternalServerEventHandler.SendInvitation(connectionId, segment);
+                    InvitationHandler.HandleSendInvitation(connectionId, packet);
                     break;
                 case ChicasInternalEventType.CreateRoom:
-                    server.lobby.TryCreateRoom(connectionId, segment);
+                    server.lobby.TryCreateRoom(connectionId, packet);
                     break;
                 case ChicasInternalEventType.JoinRoom:
-                    server.lobby.JoinClientToRoom(connectionId, segment);
+                    server.lobby.JoinClientToRoom(connectionId, packet);
                     break;
                 default:
                     Log.Warning("Not defined event type: " + eventType.ToString());
                     break;
             }
+
+            // once processed, we don't need it anymore.
+            packet.Dispose();
         }
 
         /// <summary>
@@ -86,7 +95,7 @@ namespace Telepathy
         /// <returns></returns>
         public static bool ServerSend(int[] connectionIds, ArraySegment<byte> segment)
         {
-            Log.Info($"Send data length: {segment.Array.Length}");
+            Log.Info($"Send data to Group length: {segment.Count}");
             // send to all
             bool result = true;
             foreach (int connectionId in connectionIds)
@@ -100,7 +109,7 @@ namespace Telepathy
         /// <returns></returns>
         public static bool ServerSendToAll(ArraySegment<byte> segment)
         {
-            Log.Info($"Send data length: {segment.Array.Length}");
+            Log.Info($"Send data length: {segment.Count}");
             var connectionIds = server.GetAllConnectionsIds();
             // send to all
             bool result = true;

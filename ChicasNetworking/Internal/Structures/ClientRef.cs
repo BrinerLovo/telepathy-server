@@ -44,18 +44,6 @@ namespace Lovatto.Chicas
             ServerConsole.ServerSendToSingle(this, data);
         }
 
-        /// <summary>
-        /// Send data to this client
-        /// This automatically serialize the data.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="data"></param>
-        /// <param name="eventType"></param>
-        public void SerializeAndWritte<T>(T data, ChicasInternalEventType eventType)
-        {
-            ServerConsole.ServerSendToSingle(this, new ArraySegment<byte>(NetworkSerializer.Serialize(data, eventType)));
-        }
-
         public override bool Equals(object obj)
         {
             if (obj is ClientRef)

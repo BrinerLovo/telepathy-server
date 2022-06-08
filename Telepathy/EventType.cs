@@ -12,7 +12,7 @@
     /// <summary>
     /// 
     /// </summary>
-    public enum ChicasInternalEventType : byte
+    public enum ChicasInternalEventType : short
     {
         Data = 0,
         CreatePlayer = 1,

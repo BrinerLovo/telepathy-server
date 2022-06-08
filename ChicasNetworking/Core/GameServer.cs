@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using Telepathy;
+﻿using Telepathy;
 using System.Linq;
 using Telepathy.ChicasNetworking;
+using Lovatto.Chicas.Internal;
 
 namespace Lovatto.Chicas
 {
@@ -12,6 +11,11 @@ namespace Lovatto.Chicas
         /// Handle all the game room logic
         /// </summary>
         public Lobby lobby = new Lobby();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public ChicasPacketPool packetPool = new ChicasPacketPool();
 
         public GameServer(int MaxMessageSize) : base(MaxMessageSize) { }
 
