@@ -5,13 +5,13 @@ namespace Lovatto.Chicas
 {
     public class InvitationHandler
     {
-        public static void HandleSendInvitation(int connectionID, ChicasPacket packet)
+        public static void HandleSendInvitation(ClientRef connectionID, ChicasPacket packet)
         {
             var message = new NetworkMessage();
             packet.DeserializeBuffer(ref message);
 
             int friendConnectionID = (int)message.GetParam("id");
-            var friend = ServerConsole.GetServer().GetClient(friendConnectionID);
+            var friend = ChicasSocket.Active.GetClient(friendConnectionID);
 
             if (friend == null)
             {
@@ -19,7 +19,7 @@ namespace Lovatto.Chicas
                 return;
             }
 
-            var sender = ServerConsole.GetServer().GetClient(connectionID);
+            var sender = connectionID.Client;
             if (sender == null)
             {
                 Log.Warning($"Couldn't found client sender with conID {connectionID}");
@@ -32,7 +32,7 @@ namespace Lovatto.Chicas
             packet.Code = (short)ChicasInternalEventType.ReceiveInvitation;
             packet.SetBinary(NetworkSerializer.SerializeText(data));
 
-            ServerConsole.ServerSendToSingle(friendConnectionID, packet.GetSerializedSegment());
+            ChicasSocket.SendData(friendConnectionID, packet.GetSerializedPacket());
             Log.Info($"Invitation send to {friend.NickName} from {sender.NickName} to join in {sender.ProvidedAddress}");
         }
     }

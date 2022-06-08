@@ -29,7 +29,7 @@ namespace Lovatto.Chicas
         /// <returns></returns>
         public string GetAdress()
         {
-            return ServerConsole.GetServer().GetClientAddress(OwnerID);
+            return ChicasSocket.Active.GetClientIpAddress(OwnerID);
         }
     }
 }

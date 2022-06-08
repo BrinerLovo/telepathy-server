@@ -8,10 +8,10 @@ namespace Lovatto.Chicas
         /// <summary>
         /// Called after the client connect to the server and register his player presence.
         /// </summary>
-        public static void CreatePlayer(int connectionID, ChicasPacket package)
+        public static void CreatePlayer(ClientRef connectionID, ChicasPacket package)
         {
             var text = NetworkSerializer.DeserializeText(package.Buffer, 0);
-            var client = ServerConsole.GetServer().GetClient(connectionID);
+            var client = connectionID.Client;
 
             // Example text Username|10 
             string[] split = text.Split('|');
@@ -24,8 +24,10 @@ namespace Lovatto.Chicas
             {
                 client.NickName = nickName;
                 client.AuthID = id;
-                echo = $"{connectionID}";
-                Log.Info($"Player: {nickName}#{id} created and link to connection: {connectionID}");
+                client.Status = ChicasNetworkStatus.ConnectedToLobby;
+
+                echo = $"{(int)connectionID}";
+                Log.Info($"Player: {nickName}#{id} created and link to connection: {(int)connectionID}");
             }
             else
             {
@@ -35,10 +37,10 @@ namespace Lovatto.Chicas
             // re-use the same packet to send the response.
             package.SetBinary(NetworkSerializer.SerializeText(echo));
 
-            ServerConsole.ServerSendToSingle(connectionID, package.GetSerializedSegment());
+            ChicasSocket.SendData(connectionID, package.GetSerializedPacket());
 
             // after create the player, sent the current room list so he have a copy of it locally.
-            ServerConsole.GetServer().lobby.SendRoomsTo(connectionID);
+            ChicasSocket.Active.GetLobby(string.Empty).SendRoomsTo(connectionID);
         }
     }
 }

@@ -29,7 +29,7 @@ namespace Lovatto.Chicas
         {
             get
             {
-                if (_player == null) _player = GameServer.I.GetClient(this);
+                if (_player == null) _player = ChicasSocket.Active.GetClient(this);
                 return _player;
             }
         }
@@ -40,7 +40,7 @@ namespace Lovatto.Chicas
         /// <param name="data"></param>
         public void Writte(ArraySegmentX<byte> data)
         {
-            ServerConsole.ServerSendToSingle(this, data);
+            ChicasSocket.SendData(this, data.Array);
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Lovatto.Chicas
             package.SetCode(eventType)
                 .SetBinary(data);
 
-            ServerConsole.ServerSendToSingle(this, package.GetSerializedSegment());
+            ChicasSocket.SendData(this, package.GetSerializedPacket());
         }
 
         public override bool Equals(object obj)

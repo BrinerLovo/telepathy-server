@@ -1,8 +1,6 @@
 ﻿using Lovatto.Chicas.Internal;
 using System;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using Telepathy;
 
 namespace Lovatto.Chicas
 {
@@ -54,10 +52,69 @@ namespace Lovatto.Chicas
         }
 
         /// <summary>
-        /// 
+        /// Called when a client that was inside this room gets disconnected.
         /// </summary>
         /// <param name="client"></param>
         public void DisconnectClient(ClientRef client)
+        {
+            int remain = RemoveClientFromList(client);
+           
+            // if there is no more players in this room
+            if(remain == 0)
+            {
+                // unlisted this room and delete it from the cache.
+                ChicasSocket.Active.GetLobby().RemoveRoom(this);
+            }
+            else
+            {
+                // if there are remaining players in this room
+                // let them know about the disconnection.
+
+                var response = new OpResponse();
+                response.AddParam(client.ConnectionId);
+                WriteToAll(response.GetAsPacket(ChicasInternalEventType.PlayerLeftRoom).GetSerializedSegment());
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="connectionId"></param>
+        public void LeaveRoom(ClientRef connectionId)
+        {
+            int remain = RemoveClientFromList(connectionId);
+
+            // if there is no more players in this room
+            if (remain == 0)
+            {
+                // unlisted this room and delete it from the cache.
+                ChicasSocket.Active.GetLobby().RemoveRoom(this);
+            }
+            else
+            {
+                // if there are remaining players in this room
+                // let them know about the disconnection.
+
+                var response = new OpResponse();
+                response.Code = 200;
+                response.AddParam(connectionId.ConnectionId);
+                WriteToAll(response.GetAsPacket(ChicasInternalEventType.PlayerLeftRoom).GetSerializedSegment());
+
+                response.Dispose();
+
+                // and lets confirm to the operation to the requester player
+                var leaveResponse = new OpResponse();
+                leaveResponse.Code = 202;
+                connectionId.Writte(leaveResponse.GetAsPacket(ChicasInternalEventType.PlayerLeftRoom).GetSerializedSegment());
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns>Remaining players</returns>
+        public int RemoveClientFromList(ClientRef client)
         {
             int remain = 0;
             for (int i = 0; i < PlayerList.Length; i++)
@@ -78,22 +135,7 @@ namespace Lovatto.Chicas
                     }
                 }
             }
-
-            // if there is no more players in this room
-            if(remain == 0)
-            {
-                // unlisted this room and delete it from the cache.
-                GameServer.I.lobby.RemoveRoom(this);
-            }
-            else
-            {
-                // if there are remaining players in this room
-                // let them know about the disconnection.
-
-                var response = new OpResponse();
-                response.AddParam(client.ConnectionId);
-                WriteToAll(response.GetAsPacket(ChicasInternalEventType.PlayerLeftRoom).GetSerializedSegment());
-            }
+            return remain;
         }
 
         /// <summary>
@@ -104,7 +146,7 @@ namespace Lovatto.Chicas
         /// <param name="eventType"></param>
         public void WriteToAll(ArraySegmentX<byte> data)
         {
-            ServerConsole.ServerSend(GetJoinedClients(), data);
+            ChicasSocket.SendData(GetJoinedClients(), data.Array);
         }
 
         /// <summary>

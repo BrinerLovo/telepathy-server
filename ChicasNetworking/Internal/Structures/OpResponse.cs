@@ -5,7 +5,7 @@ using Telepathy;
 namespace Lovatto.Chicas
 {
     [Serializable]
-    public class OpResponse : ICustomSerializable
+    public class OpResponse : ICustomSerializable, IDisposable
     {
         public short Code;
         public string Message = "";
@@ -80,6 +80,16 @@ namespace Lovatto.Chicas
                 .SetBinary(NetworkSerializer.SerializeStream(this));
 
             return packet;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public void Dispose()
+        {
+            Message = null;
+            Error = null;
+            Params = null;
         }
     }
 }

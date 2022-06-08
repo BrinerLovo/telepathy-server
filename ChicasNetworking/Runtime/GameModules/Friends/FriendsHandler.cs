@@ -45,7 +45,7 @@ namespace Lovatto.Chicas
                 ids[i] = int.Parse(split[i]);
             }
 
-            var cliens = ServerConsole.GetServer().GetAllClients();
+            var cliens = ChicasSocket.Active.GetAllClients();
             var friends = new FriendData[ids.Length];
 
             // check if the friends are connected to the server
@@ -78,7 +78,7 @@ namespace Lovatto.Chicas
 
             Log.Info($"Fetched friends response: {echo}, size: {package.Buffer.Length}");
 
-            ServerConsole.ServerSendToSingle(connectionID, package.GetSerializedSegment());
+            ChicasSocket.SendData(connectionID, package.GetSerializedPacket());
         }
     }
 }

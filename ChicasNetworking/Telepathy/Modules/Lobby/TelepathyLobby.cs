@@ -1,12 +1,12 @@
 ﻿using Lovatto.Chicas.Internal;
 using System.Collections.Generic;
-using Lovatto.Chicas;
-using System.Linq;
 using System.IO;
+using Telepathy;
+using System.Linq;
 
-namespace Telepathy.ChicasNetworking
+namespace Lovatto.Chicas.Telepathy
 {
-    public class Lobby
+    public class TelepathyLobby : Lobby
     {
         private Dictionary<string, GameRoom> rooms = new Dictionary<string, GameRoom>();
 
@@ -14,7 +14,7 @@ namespace Telepathy.ChicasNetworking
         /// Try to create a room.
         /// This is called when a client request to create a room.
         /// </summary>
-        public void TryCreateRoom(ClientRef connectionId, ChicasPacket packet)
+        public override void TryCreateRoom(ClientRef connectionId, ChicasPacket packet)
         {
             Log.Info($"Create Room received, size {packet.Buffer.Length}");
             GameRoom room = new GameRoom();
@@ -25,8 +25,9 @@ namespace Telepathy.ChicasNetworking
 
             if (TryCreateRoom(connectionId, ref room))
             {
-                connectionId.Player.Room = room.Name;
-                connectionId.Player.Status = ChicasNetworkStatus.InRoom;
+                var client = connectionId.Client;
+                client.Room = room.Name;
+                client.Status = ChicasNetworkStatus.InRoom;
 
                 Log.Info($"Room {room.Name} created, players: {room.PlayerList.Length}");
 
@@ -36,7 +37,7 @@ namespace Telepathy.ChicasNetworking
                 var roomList = new GameRoom[1] { room };
 
                 // update the rooms for all the players
-                 SendRoomToAll(roomList);
+                SendRoomToAll(roomList);
             }
             else
             {
@@ -49,7 +50,7 @@ namespace Telepathy.ChicasNetworking
             packet.SetBinary(NetworkSerializer.SerializeStream(response));
 
             // send room create result to the requester client.
-            ServerConsole.ServerSendToSingle(connectionId, packet.GetSerializedSegment());
+            ChicasSocket.SendData(connectionId, packet.GetSerializedPacket());
         }
 
         /// <summary>
@@ -77,7 +78,7 @@ namespace Telepathy.ChicasNetworking
         /// </summary>
         /// <param name="connectionId"></param>
         /// <param name="data"></param>
-        public void JoinClientToRoom(ClientRef connectionId, ChicasPacket packet)
+        public override void JoinClientToRoom(ClientRef connectionId, ChicasPacket packet)
         {
             string roomName = NetworkSerializer.DeserializeText(packet.Buffer, 0);
 
@@ -100,7 +101,7 @@ namespace Telepathy.ChicasNetworking
                 return;
             }
 
-            if(room.GetPlayerCount() >= room.MaxPlayers)
+            if (room.GetPlayerCount() >= room.MaxPlayers)
             {
                 response.Code = 429;
                 response.Error = "Room is full";
@@ -111,6 +112,10 @@ namespace Telepathy.ChicasNetworking
             // add the new player to the player list
             room.PlayerList = room.PlayerList.Append(connectionId);
 
+            var client = connectionId.Client;
+            client.Status = ChicasNetworkStatus.InRoom;
+            client.Room = roomName;
+
             Log.Info($"Player {connectionId} joined to room {room.Name}, PlayersInRoom: {room.PlayerList.Length}");
 
             response.Code = 200;
@@ -119,6 +124,8 @@ namespace Telepathy.ChicasNetworking
 
             // send the response to the client who join to the room.
             connectionId.Writte(response.GetAsPacket(ChicasInternalEventType.JoinRoom).GetSerializedSegment());
+
+            response.Dispose();
 
             // send the update room info to all
             var roomList = new GameRoom[1] { room };
@@ -131,7 +138,7 @@ namespace Telepathy.ChicasNetworking
         /// <summary>
         /// Remove a room from the list.
         /// </summary>
-        public void RemoveRoom(GameRoom room)
+        public override void RemoveRoom(GameRoom room)
         {
             string roomName = room.Name;
             if (!rooms.ContainsKey(roomName)) return;
@@ -151,7 +158,7 @@ namespace Telepathy.ChicasNetworking
         /// 
         /// </summary>
         /// <returns></returns>
-        public GameRoom[] GetRoomList()
+        public override GameRoom[] GetRoomList()
         {
             return rooms.Values.ToArray();
         }
@@ -159,22 +166,22 @@ namespace Telepathy.ChicasNetworking
         /// <summary>
         /// Send rooms to all the clients
         /// </summary>
-        public void SendRoomToAll(GameRoom[] rooms)
+        public override void SendRoomToAll(GameRoom[] rooms)
         {
             // @TODO: Send only to clients connected to the lobby.
 
             var packet = GetRoomListPacket(rooms);
-            ServerConsole.ServerSendToAll(packet.GetSerializedSegment());
+            ChicasSocket.SendData(packet.GetSerializedPacket());
         }
 
         /// <summary>
         /// Send all the listed rooms to a single client.
         /// </summary>
         /// <param name="connectionId"></param>
-        public void SendRoomsTo(int connectionId)
+        public override void SendRoomsTo(int connectionId)
         {
             var roomList = GetRoomList();
-            ServerConsole.ServerSendToSingle(connectionId, GetRoomListPacket(roomList).GetSerializedSegment());
+            ChicasSocket.SendData(connectionId, GetRoomListPacket(roomList).GetSerializedPacket());
 
             Log.Info($"Rooms ({roomList.Length}) send to client: {connectionId}");
         }
@@ -214,7 +221,7 @@ namespace Telepathy.ChicasNetworking
         /// <param name="roomName"></param>
         /// <param name="gameRoom"></param>
         /// <returns></returns>
-        public bool TryGetRoom(string roomName, out GameRoom gameRoom)
+        public override bool TryGetRoom(string roomName, out GameRoom gameRoom)
         {
             if (rooms.ContainsKey(roomName))
             {

@@ -97,7 +97,7 @@ namespace Lovatto.Chicas.Internal
         /// <returns></returns>
         public static ChicasPacket AcquirePacket()
         {
-            return GameServer.I.packetPool.Acquire();
+            return ChicasSocket.Active.packetPool.Acquire();
         }
 
         /// <summary>
